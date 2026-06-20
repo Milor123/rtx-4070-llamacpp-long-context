@@ -133,13 +133,13 @@ No tomes estos valores como exactos. Varían mucho según carga del sistema, tem
 ## Estructura de este repo
 
 ```
-├── README.md                  # Landing page con idiomas
+├── README.md                  # English guide
 ├── readme_es.md               # Esta guía (español)
-├── readme_en.md               # English version
 ├── readme_zh.md               # 中文版本
+├── run.bat                    # Lanzador
 ├── configs/
-│   ├── qwythos-9b-300k.bat    # Comando para Qwythos
-│   └── gemma-4-26b-256k.bat   # Comando para Gemma 4
+│   ├── qwythos-9b-300k.ps1    # Comando para Qwythos
+│   └── gemma-4-26b-256k.ps1   # Comando para Gemma 4
 ├── templates/
 │   └── 3.6_chat_template-v10.jinja  # Template para MCPs
 └── benchmarks/

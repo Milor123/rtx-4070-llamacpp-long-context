@@ -133,13 +133,13 @@ Don't take these values as exact. They vary a lot depending on system load, temp
 ## Repo structure
 
 ```
-├── README.md                  # Landing page with languages
+├── README.md                  # English guide (this file)
 ├── readme_es.md               # Spanish guide
-├── readme_en.md               # English guide (this file)
 ├── readme_zh.md               # Chinese guide
+├── run.bat                    # Launcher
 ├── configs/
-│   ├── qwythos-9b-300k.bat    # Qwythos command
-│   └── gemma-4-26b-256k.bat   # Gemma 4 command
+│   ├── qwythos-9b-300k.ps1    # Qwythos command
+│   └── gemma-4-26b-256k.ps1   # Gemma 4 command
 ├── templates/
 │   └── 3.6_chat_template-v10.jinja  # MCP template
 └── benchmarks/
