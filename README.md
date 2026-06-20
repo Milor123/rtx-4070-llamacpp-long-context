@@ -1,0 +1,149 @@
+# RTX 4070 + llama.cpp: Contexto Largo con Baja VRAM
+
+Mi experiencia utilizando una **RTX 4070 (12 GB VRAM)** para correr modelos de lenguaje grande con contextos extendidos (hasta 300k–500k tokens) usando [llama.cpp](https://github.com/ggerganov/llama.cpp) y herramientas como [OpenCode](https://github.com/sgth/opencode) que dependen de MCPs y tool-calling interno.
+
+---
+
+## Hardware
+
+| Componente | Detalle |
+|---|---|
+| GPU | NVIDIA RTX 4070 — **12 GB VRAM** |
+| RAM | 48 GB DDR5 |
+| CPU | Intel Core i5 14ª gen |
+
+---
+
+## Por qué compartir esto
+
+Con 12 GB de VRAM no alcanza para correr modelos grandes con contextos largos "de fábrica". Después de probar varias configuraciones, forks y parámetros, llegué a un setup que me permite usar modelos como:
+
+- **Qwythos 9B** con contexto de **300k tokens**
+- **Gemma 4 26B** con contexto de **256k tokens**
+
+Ambos con velocidades decentes y MCPs funcionando correctamente.
+
+---
+
+## Fork utilizado
+
+Uso el fork mantenido por **AtomicBot-ai** que incluye mejoras de aceleración por GPU:
+
+> [https://github.com/AtomicBot-ai/atomic-llama-cpp-turboquant](https://github.com/AtomicBot-ai/atomic-llama-cpp-turboquant)
+
+---
+
+## El problema: MCPs no funcionaban
+
+El modelo Qwythos no rendía bien con las herramientas internas de OpenCode (MCPs). El problema era el chat template: el que venía por defecto con el modelo no soportaba correctamente el formato de tool-calling. Lo solucioné adjuntando el template Jinja que está en `templates/3.6_chat_template-v10.jinja` (tomado de [este gist](https://gist.github.com/Milor123/ecb30311450c6b5fe581dab4df7515b7)).
+
+Con ese template activado (`--chat-template-file ... --jinja`) los MCPs y las llamadas internas del modelo funcionan sin problemas.
+
+---
+
+## Configuraciones
+
+### Qwythos 9B — 300k tokens de contexto
+
+```
+llama-server.exe -m "Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf" ^
+  --host 127.0.0.1 --port 10000 -ngl 99 -c 356000 -b 8192 -ub 2048 ^
+  --no-mmap --direct-io --temp 0.6 -np 1 -fa on ^
+  --top-k 20 --repeat-penalty 1.05 --top-p 0.95 --min-p 0 ^
+  --cont-batching --metrics ^
+  --chat-template-kwargs '{"preserve_thinking": true}' ^
+  -ctv turbo2 -ctk turbo2 --jinja -tb 10 -t 10 --poll 100 ^
+  --cpu-strict 1 --n-cpu-moe 5 ^
+  --chat-template-file "templates/3.6_chat_template-v10.jinja"
+```
+
+**Rendimiento observado:** 13–20 t/s en generación con ese contexto.
+
+### Gemma 4 26B — 256k tokens de contexto
+
+```
+llama-server.exe -m "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf" ^
+  --host 127.0.0.1 --port 10000 -ngl 99 -c 256000 -b 8192 -ub 2048 ^
+  --no-mmap --direct-io --temp 1.0 -np 1 -fa on ^
+  --top-k 64 --top-p 0.95 --min-p 0 ^
+  --cont-batching --metrics ^
+  --chat-template-kwargs '{"preserve_thinking": true}' ^
+  -ctv turbo3 -ctk turbo3 --jinja -tb 14 -t 14 --poll 100 ^
+  --cpu-strict 1 --n-cpu-moe 14
+```
+
+**Nota:** MTP (Multi-Token Prediction) desactivado porque el fork no lo soporta aún de forma estable en Gemma 4.
+
+---
+
+## Parámetros clave explicados
+
+| Parámetro | Valor recomendado | Nota |
+|---|---|---|
+| `-ngl` | 99 | Capa máxima en GPU |
+| `-c` | 256000–356000 | Tamaño del contexto en tokens |
+| `-b` | 8192 | Batch size (tamaño de prompt) |
+| `-ub` | 2048 | micro-batching |
+| `-tb` | 10–14 | Threads para batch (↑ = más VRAM usada, más lento) |
+| `-t` | 10–14 | Threads de generación |
+| `--n-cpu-moe` | 5–17 | MoE offloading a CPU |
+| `--jinja` | sí | Necesario para usar `--chat-template-file` |
+| `-ctv/-ctk` | turbo2 o turbo3 | Tipo de cuantización KV |
+| `--no-mmap --direct-io` | sí | Evita pagefile, mejora rendimiento en Windows |
+| `--cont-batching` | sí | Batching continuo |
+| `--cpu-strict` | 1 | Fuerza CPU estricto para capas offloaded |
+
+### `--n-cpu-moe` — el parámetro que define todo
+
+Este es **el parámetro más importante** para GPUs con poca VRAM:
+
+- **Valor bajo** (5): más VRAM libre, menos carga en CPU, velocidades más altas. Útil para contextos cortos o GPUs con 16+ GB VRAM.
+- **Valor alto** (14–17): más capas MoE van a CPU, más lenta la generación, pero se puede estirar el contexto significativamente. Necesario para modelos muy pesados como Gemma 4 26B.
+
+Si aumentás `--n-cpu-moe`, podés incrementar el contexto, pero la velocidad de escritura cae. Bajarlo mejora la velocidad pero reduce el contexto máximo usable.
+
+---
+
+## Benchmark (datos visuales del WebUI — muy inexactos)
+
+> **⚠️ Advertencia:** Los números de abajo los anoté a ojo mirando el panel de métricas del WebUI de llama.cpp. No usé herramientas de medición precisas, así que **no son demasiado fiables**. Sirven como referencia muy grosera para hacerse una idea de los órdenes de magnitud, nada más. No los tomes como precisos.
+
+| Modelo | Contexto | t/s lectura | t/s escritura | VRAM aprox. |
+|---|---|---|---|---|
+| Qwythos 9B Q4_K_M | 300k–356k | ~1000–2000 | 13–20 | ~12 GB |
+| Gemma 4 26B Q4_K_XL | 256k | ~1000–2000 | ~5–10 | ~12 GB |
+
+Si querés datos fiables, te recomiendo medirlo vos mismo con tu hardware específico: el t/s depende muchísimo de la carga del sistema, VRAM compartida, temperatura, etc.
+
+---
+
+## Para quién es esto
+
+- Usuarios de **RTX 4060 / 4070 / 5060 / 5070** con 8–12 GB VRAM
+- Quienes quieren correr contextos largos (128k–500k) sin morir en el intento
+- Cualquiera que use **OpenCode** o similar y necesite MCPs funcionando con modelos quantizados
+
+---
+
+## Estructura de este repo
+
+```
+├── README.md                  # Esta guía
+├── configs/
+│   ├── qwythos-9b-300k.bat    # Comando para Qwythos
+│   └── gemma-4-26b-256k.bat   # Comando para Gemma 4
+├── templates/
+│   └── 3.6_chat_template-v10.jinja  # Template para MCPs
+└── benchmarks/
+    └── RESULTS.md             # Tabla de resultados
+```
+
+---
+
+## Si tenés otra GPU
+
+Proba los parámetros y registralos. Los archivos `configs/` se pueden adaptar a cualquier GPU de la línea RTX. Cambiá sobre todo `--n-cpu-moe`, `-tb`, `-t` y `-c` según tu VRAM disponible.
+
+## Licencia
+
+MIT — usá y compartí lo que quieras.

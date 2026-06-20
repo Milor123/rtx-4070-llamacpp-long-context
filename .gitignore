@@ -1,0 +1,13 @@
+.vllm/
+*.gguf
+*.ggml
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+downloads/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
