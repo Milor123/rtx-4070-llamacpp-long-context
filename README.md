@@ -31,6 +31,18 @@ Uso el fork mantenido por **AtomicBot-ai** que incluye mejoras de aceleración p
 
 > [https://github.com/AtomicBot-ai/atomic-llama-cpp-turboquant](https://github.com/AtomicBot-ai/atomic-llama-cpp-turboquant)
 
+### TurboQuant — el secreto detrás del contexto grande
+
+Todo esto funciona gracias a **TurboQuant**, la tecnología de compresión de KV cache que viene en el fork de AtomicBot. Los flags `-ctv turbo2` y `-ctk turbo2` (o `turbo3` para Gemma 4) activan la compresión de la cache de keys/values, reduciendo drásticamente el consumo de VRAM por token de contexto.
+
+¿Qué significa esto en la práctica?
+
+- **Sin TurboQuant**: con 12 GB de VRAM apenas llegás a ~32k tokens
+- **Con TurboQuant (turbo2)**: llegás a 300k+ tokens con el mismo modelo, misma GPU
+- **Con TurboQuant (turbo3, Gemma 4)**: llegás a 256k tokens en un modelo de 26B parámetros
+
+El costo es velocidad: la compresión/descompresión lleva tiempo, así que la generación es más lenta de lo que sería sin TurboQuant. Pero es un tradeoff totalmente aceptable cuando podés multiplicar por 10x tu contexto usable.
+
 ---
 
 ## El problema: MCPs no funcionaban
@@ -45,31 +57,16 @@ Con ese template activado (`--chat-template-file ... --jinja`) los MCPs y las ll
 
 ### Qwythos 9B — 300k tokens de contexto
 
-```
-llama-server.exe -m "Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf" ^
-  --host 127.0.0.1 --port 10000 -ngl 99 -c 356000 -b 8192 -ub 2048 ^
-  --no-mmap --direct-io --temp 0.6 -np 1 -fa on ^
-  --top-k 20 --repeat-penalty 1.05 --top-p 0.95 --min-p 0 ^
-  --cont-batching --metrics ^
-  --chat-template-kwargs '{"preserve_thinking": true}' ^
-  -ctv turbo2 -ctk turbo2 --jinja -tb 10 -t 10 --poll 100 ^
-  --cpu-strict 1 --n-cpu-moe 5 ^
-  --chat-template-file "templates/3.6_chat_template-v10.jinja"
+```powershell
+.\llama-server.exe -m "Qwythos-9B-Claude-Mythos-5-1M-Q4_K_M.gguf" --host 127.0.0.1 --port 10000 -ngl 99 -c 356000 -b 8192 -ub 2048 --no-mmap --direct-io --temp 0.6 -np 1 -fa on --top-k 20 --repeat-penalty 1.05 --top-p 0.95 --min-p 0 --cont-batching --metrics --chat-template-kwargs '{"preserve_thinking": true}' -ctv turbo2 -ctk turbo2 --jinja -tb 10 -t 10 --poll 100 --cpu-strict 1 --n-cpu-moe 5 --chat-template-file "templates/3.6_chat_template-v10.jinja"
 ```
 
 **Rendimiento observado:** 13–20 t/s en generación con ese contexto.
 
 ### Gemma 4 26B — 256k tokens de contexto
 
-```
-llama-server.exe -m "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf" ^
-  --host 127.0.0.1 --port 10000 -ngl 99 -c 256000 -b 8192 -ub 2048 ^
-  --no-mmap --direct-io --temp 1.0 -np 1 -fa on ^
-  --top-k 64 --top-p 0.95 --min-p 0 ^
-  --cont-batching --metrics ^
-  --chat-template-kwargs '{"preserve_thinking": true}' ^
-  -ctv turbo3 -ctk turbo3 --jinja -tb 14 -t 14 --poll 100 ^
-  --cpu-strict 1 --n-cpu-moe 14
+```powershell
+.\llama-server.exe -m "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf" --host 127.0.0.1 --port 10000 -ngl 99 -c 256000 -b 8192 -ub 2048 --no-mmap --direct-io --temp 1.0 -np 1 -fa on --top-k 64 --top-p 0.95 --min-p 0 --cont-batching --metrics --chat-template-kwargs '{"preserve_thinking": true}' -ctv turbo3 -ctk turbo3 --jinja -tb 14 -t 14 --poll 100 --cpu-strict 1 --n-cpu-moe 14
 ```
 
 **Nota:** MTP (Multi-Token Prediction) desactivado porque el fork no lo soporta aún de forma estable en Gemma 4.
@@ -88,7 +85,7 @@ llama-server.exe -m "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf" ^
 | `-t` | 10–14 | Threads de generación |
 | `--n-cpu-moe` | 5–17 | MoE offloading a CPU |
 | `--jinja` | sí | Necesario para usar `--chat-template-file` |
-| `-ctv/-ctk` | turbo2 o turbo3 | Tipo de cuantización KV |
+| `-ctv/-ctk` | turbo2 o turbo3 | Activación de **TurboQuant** — comprime la KV cache. turbo2 para la mayoría de modelos, turbo3 para Gemma 4 |
 | `--no-mmap --direct-io` | sí | Evita pagefile, mejora rendimiento en Windows |
 | `--cont-batching` | sí | Batching continuo |
 | `--cpu-strict` | 1 | Fuerza CPU estricto para capas offloaded |
