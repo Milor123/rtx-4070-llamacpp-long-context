@@ -20,13 +20,13 @@ goto end
 :qwythos
 echo.
 echo Launching Qwythos 9B...
-powershell.exe -ExecutionPolicy Bypass -File "configs\qwythos-9b-300k.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0qwythos-9b-300k.ps1"
 goto end
 
 :gemma
 echo.
 echo Launching Gemma 4 26B...
-powershell.exe -ExecutionPolicy Bypass -File "configs\gemma-4-26b-256k.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0gemma-4-26b-256k.ps1"
 goto end
 
 :end

@@ -136,10 +136,10 @@ Qwythos 模型无法正常使用 OpenCode 的内部工具（MCP）。问题出�
 ├── README.md                  # English guide
 ├── readme_es.md               # Spanish guide
 ├── readme_zh.md               # 中文指南（本文件）
-├── run.bat                    # 启动器
 ├── configs/
 │   ├── qwythos-9b-300k.ps1    # Qwythos 命令
-│   └── gemma-4-26b-256k.ps1   # Gemma 4 命令
+│   ├── gemma-4-26b-256k.ps1   # Gemma 4 命令
+│   └── run.bat                # 启动器
 ├── templates/
 │   └── 3.6_chat_template-v10.jinja  # MCP 模板
 └── benchmarks/
