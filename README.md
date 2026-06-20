@@ -104,16 +104,14 @@ Si aumentás `--n-cpu-moe`, podés incrementar el contexto, pero la velocidad de
 
 ---
 
-## Benchmark (datos visuales del WebUI — muy inexactos)
+## Rendimiento observado (visual, no medido)
 
-> **⚠️ Advertencia:** Los números de abajo los anoté a ojo mirando el panel de métricas del WebUI de llama.cpp. No usé herramientas de medición precisas, así que **no son demasiado fiables**. Sirven como referencia muy grosera para hacerse una idea de los órdenes de magnitud, nada más. No los tomes como precisos.
+Los números que anoté son **visuales del WebUI**, no tomados de herramientas de medición precisas. Son referencias muy groseras:
 
-| Modelo | Contexto | t/s lectura | t/s escritura | VRAM aprox. |
-|---|---|---|---|---|
-| Qwythos 9B Q4_K_M | 300k–356k | ~1000–2000 | 13–20 | ~12 GB |
-| Gemma 4 26B Q4_K_XL | 256k | ~1000–2000 | ~5–10 | ~12 GB |
+- **Qwythos 9B**: velocidad de escritura entre ~13–20 t/s con contexto de ~300k tokens
+- **Gemma 4 26B**: la generación es más lenta con el `--n-cpu-moe` alto, pero compensa porque necesitás buena velocidad de lectura (1000–2000 t/s) para procesar contextos largos como los que usa OpenCode
 
-Si querés datos fiables, te recomiendo medirlo vos mismo con tu hardware específico: el t/s depende muchísimo de la carga del sistema, VRAM compartida, temperatura, etc.
+No tomes estos valores como exactos. Varían mucho según carga del sistema, temperatura, VRAM compartida, etc.
 
 ---
 
