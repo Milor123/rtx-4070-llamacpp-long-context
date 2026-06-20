@@ -69,11 +69,13 @@ With that template activated (`--chat-template-file ... --jinja`) the MCPs and i
 
 ### Gemma 4 26B — 256k context
 
+For Gemma 4 I used a **different fork**: [https://github.com/cortexist/llama.cpp](https://github.com/cortexist/llama.cpp) (it supports turbo3 for Gemma 4).
+
 ```powershell
 .\llama-server.exe -m "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf" --host 127.0.0.1 --port 10000 -ngl 99 -c 256000 -b 8192 -ub 2048 --no-mmap --direct-io --temp 1.0 -np 1 -fa on --top-k 64 --top-p 0.95 --min-p 0 --cont-batching --metrics --chat-template-kwargs '{"preserve_thinking": true}' -ctv turbo3 -ctk turbo3 --jinja -tb 14 -t 14 --poll 100 --cpu-strict 1 --n-cpu-moe 14
 ```
 
-**Note:** MTP (Multi-Token Prediction) disabled because the fork doesn't have stable MTP support for Gemma 4 yet.
+**Note:** I couldn't get MTP (Multi-Token Prediction) to work with this fork. The developers might still be working on it.
 
 ---
 
