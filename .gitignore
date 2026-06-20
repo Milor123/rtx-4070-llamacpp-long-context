@@ -11,3 +11,9 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+# Archivos de trabajo / working files
+historia.md
+plan.txt
+Modelos.txt
+/3.6_chat_template-v10.jinja
